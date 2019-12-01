@@ -61,7 +61,6 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 			path = "aws"
 		}
 	}
-	log.Info("Auth Type %s", authType)
 	url := fmt.Sprintf("/auth/%s/login", path)
 
 	switch authType {
@@ -100,14 +99,12 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 		secret, err = c.Logical().Write(url, map[string]interface{}{})
 	case "ec2":
 		role := getParameter("vault-role", params)
-		log.Info("Recognized as ec2 aws backend")
 		identityResponse, err := makeAWSInstanceIdentityRequest(c)
 		if err != nil {
 			return err
 		}
 		re := regexp.MustCompile(`\n`)
 		identityResponseTrimmed := re.ReplaceAllString(string(identityResponse), ``)
-		log.Info(identityResponseTrimmed)
 		secret, err = c.Logical().Write(url, map[string]interface{}{
 			"role":  role,
 			"nonce": params["vault-nonce"],
@@ -124,12 +121,11 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 		return nil
 	}
 
-	log.Info("client not not not authenticated with auth backend: %s", authType)
 	if secret == nil || secret.Auth == nil {
-		return errors.New("Unable to authenticate " + authType)
+		return errors.New("Unable to authenticate")
 	}
 
-	log.Debug("client authenticated with auth backend: %s", secret.Auth.Metadata["nonce"])
+	log.Debug("client authenticated with auth backend: %s", authType)
 	// the default place for a token is in the auth section
 	// otherwise, the backend will set the token itself
 	c.SetToken(secret.Auth.ClientToken)

@@ -30,8 +30,6 @@ type Config struct {
 	SRVRecord     string `toml:"srv_record"`
 	LogLevel      string `toml:"log-level"`
 	Watch         bool   `toml:"watch"`
-	Role          string
-	Nonce         string
 	PrintVersion  bool
 	ConfigFile    string
 	OneTime       bool
