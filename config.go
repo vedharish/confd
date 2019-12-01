@@ -30,6 +30,8 @@ type Config struct {
 	SRVRecord     string `toml:"srv_record"`
 	LogLevel      string `toml:"log-level"`
 	Watch         bool   `toml:"watch"`
+	Role          string
+	Nonce         string
 	PrintVersion  bool
 	ConfigFile    string
 	OneTime       bool
@@ -73,6 +75,8 @@ func init() {
 	flag.StringVar(&config.Username, "username", "", "the username to authenticate as (only used with vault and etcd backends)")
 	flag.StringVar(&config.Password, "password", "", "the password to authenticate with (only used with vault and etcd backends)")
 	flag.BoolVar(&config.Watch, "watch", false, "enable watch support")
+	flag.StringVar(&config.Nonce, "vault-nonce", "", "nonce vaule for re-authenticating to vault with ec2 backend")
+	flag.StringVar(&config.EC2Role, "vault-role", "", "assumed role for authenticating to vault with ec2 backend")
 }
 
 // initConfig initializes the confd configuration by first setting defaults,

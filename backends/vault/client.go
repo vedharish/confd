@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
 
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/kelseyhightower/confd/log"
@@ -56,8 +57,11 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 		path = authType
 		if authType == "app-role" {
 			path = "approle"
+		} else if authType == "ec2" {
+			path = "aws"
 		}
 	}
+	log.Info("Auth Type %s", authType)
 	url := fmt.Sprintf("/auth/%s/login", path)
 
 	switch authType {
@@ -94,6 +98,21 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 		})
 	case "cert":
 		secret, err = c.Logical().Write(url, map[string]interface{}{})
+	case "ec2":
+		role := getParameter("vault-role", params)
+		log.Info("Recognized as ec2 aws backend")
+		identityResponse, err := makeAWSInstanceIdentityRequest(c)
+		if err != nil {
+			return err
+		}
+		re := regexp.MustCompile(`\n`)
+		identityResponseTrimmed := re.ReplaceAllString(string(identityResponse), ``)
+		log.Info(identityResponseTrimmed)
+		secret, err = c.Logical().Write(url, map[string]interface{}{
+			"role":  role,
+			"nonce": params["vault-nonce"],
+			"pkcs7": identityResponseTrimmed,
+		})
 	}
 
 	if err != nil {
@@ -105,15 +124,27 @@ func authenticate(c *vaultapi.Client, authType string, params map[string]string)
 		return nil
 	}
 
+	log.Info("client not not not authenticated with auth backend: %s", authType)
 	if secret == nil || secret.Auth == nil {
-		return errors.New("Unable to authenticate")
+		return errors.New("Unable to authenticate " + authType)
 	}
 
-	log.Debug("client authenticated with auth backend: %s", authType)
+	log.Debug("client authenticated with auth backend: %s", secret.Auth.Metadata["nonce"])
 	// the default place for a token is in the auth section
 	// otherwise, the backend will set the token itself
 	c.SetToken(secret.Auth.ClientToken)
 	return nil
+}
+
+func makeAWSInstanceIdentityRequest(c *vaultapi.Client) ([]byte, error) {
+	resp, err := http.Get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	return ioutil.ReadAll(resp.Body)
 }
 
 func getConfig(address, cert, key, caCert string) (*vaultapi.Config, error) {

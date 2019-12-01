@@ -72,6 +72,10 @@ Usage of confd:
       Vault user-id to use with the app-id backend (only used with -backend=value and auth-type=app-id)
   -username string
       the username to authenticate as (only used with vault and etcd backends)
+  -vault-nonce string
+      Vault nonce value for re-authenticating (only used with -auth-type=ec2)
+  -vault-role string
+      Vault role that confd should assume while authenticating (only used with -auth-type=ec2)
   -version
       print version and exit
   -watch
